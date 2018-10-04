@@ -1,21 +1,26 @@
-*Read this in other languages: [中国語](README-cn.md),[日本語](README-ja.md).*
+*Read this in other languages: [한국어](README-ko.md), [中国](README-cn.md).*
+# BlockchainNetwork-CompositeJourney
 
-# Build Blockchain Insurance Application
+## Build Your First Network (BYFN)
 
-This project showcases the use of blockchain in insurance domain for claim processing. In this application, we have four participants, namely insurance, police, repair shop and shop peer. Insurance peer is the insurance company providing the insurance for the products and it is responsible for processing the claims. Police peer is responsible for verifying the theft claims. Repair shop peer is responsible for repairs of the product while shop peer sells the products to consumer.
+Welcome to the first in a series of building a Blockchain application. **Part 1** will show you how to create a Hyperledger Composer Business Network Archive (BNA) file for Commodity trade and deploy it on a Hyperledger Fabric. This will be the "Hello World" of Hyperledger Composer samples so beginner developers should be able to manage this. This pattern has been updated to support Hyperledger Composer V0.19.5, Hyperledger Fabric V1.1.
 
-Audience level : Intermediate Developers
+Hyperledger Fabric is a blockchain framework implementation and one of the Hyperledger projects hosted by The Linux Foundation. Intended as a foundation for developing applications or solutions with a modular architecture, Hyperledger Fabric allows components, such as consensus and membership services, to be plug-and-playIn
+
+[Part 2](https://github.com/IBM/BlockchainBalanceTransfer-CompositeJourney), we will explore more about creating a complex network with multiple participants and using Access Control Rules (ACL) to provide them network access permissions. In this journey, you will run Hyperledger Fabric locally.
+
+You can use [Hyperledger Composer](https://github.com/hyperledger/composer) to quickly model your current business network, containing your existing assets and the transactions related to them. Assets are tangible or intangible goods, services, or property. As part of your business network model, you define the transactions which can interact with assets. Business networks also include the participants who interact with them, each of which can be associated with a unique identity, across multiple business networks. A business network definition consists of model(.cto), script(.js) and ACL(.acl) files packaged and exported as an archive(.bna file). The archive file is then deployed to a Hyperledger Fabric network.
 
 ## Included Components
 * Hyperledger Fabric
+* Hyperledger Composer
 * Docker
 
 ## Application Workflow Diagram
-![Workflow](images/arch-blockchain-insurance2.png)
+![Application Workflow](images/arch-blockchain-network1.png)
 
-* Generate Certificates for peers
-* Build Docker images for network
-* Start the insurance network
+1. Install the Network Dependencies a) cryptogen b) configtxgen c) configtxlator d) peer
+2. Configure the network a) generating the network artifacts b) Starting up the network
 
 ## Prerequisites
 We find that Blockchain can be finicky when it comes to installing Node. We want to share this [StackOverflow response](https://stackoverflow.com/questions/49744276/error-cannot-find-module-api-hyperledger-composer) - because many times the errors you see with Composer are derived in having installed either the wrong Node version or took an approach that is not supported by Composer: 
@@ -29,195 +34,275 @@ We find that Blockchain can be finicky when it comes to installing Node. We want
 * [Python](https://www.python.org/downloads/) - 2.7.x
 
 ## Steps
+1. [Installing Hyperledger Composer Development Tools](#1-installing-hyperledger-composer-development-tools)
+2. [Starting Hyperledger Fabric](#2-starting-hyperledger-fabric)
+3. [Generate the Business Network Archive (BNA)](#3-generate-the-business-network-archive-bna)
+4. [Deploy the Business Network Archive using Composer Playground](#4-deploy-the-business-network-archive-using-composer-playground)
+5. [Deploy the Business Network Archive on Hyperledger Composer running locally](#5-deploy-the-business-network-archive-on-hyperledger-composer-running-locally)
 
-1. [Run the application](#1-run-the-application)
+## 1. Installing Hyperledger Composer Development Tools
 
-## 1. Run the application
+**Note:** You may need to run these commands in superuser `sudo` mode. `sudo` allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. Additionally, you will be installing the latest version of composer-cli (0.19.5).  If you have an older version installed, go ahead and remove it by using the command:
 
-Clone the repository:
+```
+npm uninstall -g composer-cli
+```
+
+* The `composer-cli` contains all the command line operations for developing business networks. To install `composer-cli` run the following command:
+```
+npm install -g composer-cli@0.19.5
+```
+
+* The `generator-hyperledger-composer` is a Yeoman plugin that creates bespoke (e.g. customized) applications for your business network. Yeoman is an open source client-side development stack, consisting of tools and frameworks intended to help developers build web applications. To install `generator-hyperledger-composer` run the following command:
+```
+npm install -g generator-hyperledger-composer@0.19.5
+```
+
+* The `composer-rest-server` uses the Hyperledger Composer LoopBack Connector to connect to a business network, extract the models and then present a page containing the REST APIs that have been generated for the model. To install `composer-rest-server` run the following command:
+```
+npm install -g composer-rest-server@0.19.5
+```
+
+* When combining `Yeoman` with the `generator-hyperledger-composer` component, it can interpret business networks and generate applications based on them. To install `Yeoman` run the following command:
+```
+npm install -g yo@2.0.0
+```
+
+## 2. Starting Hyperledger Fabric
+
+First download the docker files for Fabric in preparation for creating a Composer profile.  Hyperledger Composer uses Connection Profiles to connect to a runtime. A Connection Profile is a JSON document that lives in the user's home directory (or may come from an environment variable) and is referenced by name when using the Composer APIs or the Command Line tools. Using connection profiles ensures that code and scripts are easily portable from one runtime instance to another.
+
+The PeerAdmin card is a special ID card used to administer the local Hyperledger Fabric. In a development installation, such as the one on your computer, the PeerAdmin ID card is created when you install the local Hyperledger Fabric.
+
+The form for a PeerAdmin card for a Hyperledger Fabric v1.0 network is PeerAdmin@hlfv1.  In general, the PeerAdmin is a special role reserved for functions such as:
+
+* Deploying business networks
+* Creating, issuing, and revoking ID cards for business network admins*
+
+First, clone the contents of this repo locally and cd into the project folder by running these commands:
+
 ```bash
-git clone https://github.com/IBM/build-blockchain-insurance-app.git
+git clone https://github.com/IBM/BlockchainNetwork-CompositeJourney.git
+
+cd BlockchainNetwork-CompositeJourney
 ```
 
-Login using your [docker hub](https://hub.docker.com/) credentials.
+Then, start the Fabric and create a Composer profile using the following commands:
 ```bash
-docker login
+./downloadFabric.sh
+./startFabric.sh
+./createPeerAdminCard.sh
+```  
+
+No need to do it now; however as an fyi - you can stop and tear down Fabric using:
+```
+./stopFabric.sh
+./teardownFabric.sh
 ```
 
-Run the build script to download and create docker images for the orderer, insurance-peer, police-peer, shop-peer, repairshop-peer, web application and certificate authorities for each peer. This will run for a few minutes.
+## 3. Generate the Business Network Archive (BNA)
 
-For Mac user:
+This business network defines:
+
+**Participant**
+`Trader`
+
+**Asset**
+`Commodity`
+
+**Transaction**
+`Trade`
+
+`Commodity` is owned by a `Trader`, and the owner of a `Commodity` can be modified by submitting a `Trade` transaction.
+
+The next step is to generate a Business Network Archive (BNA) file for your business network definition. The BNA file is the deployable unit -- a file that can be deployed to the Composer runtime for execution.
+
+Use the following command to generate the network archive:
 ```bash
-cd build-blockchain-insurance-app
-./build_mac.sh
+npm install
 ```
-
-For Ubuntu user:
+You should see the following output:
 ```bash
-cd build-blockchain-insurance-app
-./build_ubuntu.sh
+Creating Business Network Archive
+
+Looking for package.json of Business Network Definition
+	Input directory: /Users/ishan/Documents/git-demo/BlockchainNetwork-CompositeJourney
+
+Found:
+	Description: Sample Trade Network
+	Name: my-network
+	Identifier: my-network@0.0.1
+
+Written Business Network Definition Archive file to
+	Output file: ./dist/my-network.bna
+
+Command succeeded
 ```
 
-You should see the following output on console:
+The `composer archive create` command has created a file called `my-network.bna` in the `dist` folder.
+
+You can test the business network definition against the embedded runtime that stores the state of 'the blockchain' in-memory in a Node.js process. This embedded runtime is very useful for unit testing, as it allows you to focus on testing the business logic rather than configuring an entire Fabric.
+From your project working directory (`BlockchainNetwork-CompositeJourney`), run the command:
 ```
-Creating repairshop-ca ...
-Creating insurance-ca ...
-Creating shop-ca ...
-Creating police-ca ...
-Creating orderer0 ...
-Creating repairshop-ca
-Creating insurance-ca
-Creating police-ca
-Creating shop-ca
-Creating orderer0 ... done
-Creating insurance-peer ...
-Creating insurance-peer ... done
-Creating shop-peer ...
-Creating shop-peer ... done
-Creating repairshop-peer ...
-Creating repairshop-peer ... done
-Creating web ...
-Creating police-peer ...
-Creating web
-Creating police-peer ... done
+npm test
 ```
 
-**Wait for few minutes for application to install and instantiate the chaincode on network**
-
-Check the status of installation using command:
+You should see the following output:
 ```bash
-docker logs web
-```
-On completion, you should see the following output on console:
-```
-> blockchain-for-insurance@2.1.0 serve /app
-> cross-env NODE_ENV=production&&node ./bin/server
 
-/app/app/static/js
-Server running on port: 3000
-Default channel not found, attempting creation...
-Successfully created a new default channel.
-Joining peers to the default channel.
-Chaincode is not installed, attempting installation...
-Base container image present.
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-Successfully installed chaincode on the default channel.
-Successfully instantiated chaincode on all peers.
+> my-network@0.0.1 test /Users/laurabennett/2017-NewRole/Code/BlockchainNetwork-CompositeJourney
+> mocha --recursive
+
+Commodity Trading
+    #tradeCommodity
+      ✓ should be able to trade a commodity (198ms)
+
+
+  1 passing (1s)
 ```
 
-Use the link http://localhost:3000 to load the web application in browser.
+## 4. Deploy the Business Network Archive using Composer Playground
 
-The home page shows the participants (Peers) in the network. You can see that there is an Insurance, Repair Shop, Police and Shop Peer implemented. They are the participants of the network.
+Open [Composer Playground](http://composer-playground.mybluemix.net/), by default the Basic Sample Network is imported.
+If you have previously used Playground, be sure to clear your browser local storage by running `localStorage.clear()` in your browser Console.
 
-![Blockchain Insurance](images/home.png)
+Now import the `my-network.bna` file and click on deploy button.  If you don't know how to import, take a [tour of Composer Playground](https://www.youtube.com/watch?time_continue=29&v=JQMh_DQ6wXc)
 
-Imagine being a consumer (hereinafter called “Biker”) that wants to buy a phone, bike or Ski. By clicking on the “Go to the shop” section, you will be redirected to the shop (shop peer) that offers you the following products.
 
-![Customer Shopping](images/Picture1.png)
+>You can also setup [Composer Playground locally](https://hyperledger.github.io/composer/latest/installing/development-tools.html).
 
-You can see the three products offered by the shop(s) now. In addition, you have insurance contracts available for them. In our scenario, you are an outdoor sport enthusiast who wants to buy a new Bike. Therefore, you’ll click on the Bike Shop section.
+You will see the following:
+<p align="center">
+  <img width="400" height="200" src="images/ComposerPlayground.jpg">
+</p>
 
-![Shopping](images/Picture2.png)
+To test your Business Network Definition, first click on the **Test** tab:
 
-In this section, you are viewing the different bikes available in the store. You can select within four different Bikes. By clicking on next you’ll be forwarded to the next page which will ask for the customer’s personal data.
+Click on the `Create New Participant` button
+<p align="center">
+  <img width="200" height="100" src="images/createparticipantbtn.png">
+</p>
 
-![Bike Shop](images/Picture3.png)
 
-You have the choice between different insurance contracts that feature different coverage as well as terms and conditions. You are required to type-in your personal data and select a start and end date of the contract. Since there is a trend of short-term or event-driven contracts in the insurance industry you have the chance to select the duration of the contract on a daily basis. The daily price of the insurance contract is being calculated by a formula that had been defined in the chaincode. By clicking on next you will be forwarded to a screen that summarizes your purchase and shows you the total sum.
+Create `Trader` participants:
 
-![Bike Insurance](images/Picture4.png)
+```
+{
+  "$class": "org.acme.mynetwork.Trader",
+  "tradeId": "traderA",
+  "firstName": "Tobias",
+  "lastName": "Funke"
+}
+```
+```
+{
+  "$class": "org.acme.mynetwork.Trader",
+  "tradeId": "traderB",
+  "firstName": "Simon",
+  "lastName": "Stone"
+}
+```
 
-The application will show you the total sum of your purchase. By clicking on “order” you agree to the terms and conditions and close the deal (signing of the contract). In addition, you’ll receive a unique username and password. The login credentials will be used once you file a claim.  A block is being written to the Blockchain.
+Highlight the `Commodity` tab on the far left hand side and
+create a `Commodity` asset with owner as `traderA`:
+```
+{
+  "$class": "org.acme.mynetwork.Commodity",
+  "tradingSymbol": "commodityA",
+  "description": "Sample Commodity",
+  "mainExchange": "Dollar",
+  "quantity": 100,
+  "owner": "resource:org.acme.mynetwork.Trader#traderA"
+}
+```
 
->note You can see the block by clicking on the black arrow on the bottom-right.
+Click on the `Submit Transaction` button on the lower left-hand side and submit a `Trade` transaction to change the owner of Commodity `commodityA`:
+```
+{
+  "$class": "org.acme.mynetwork.Trade",
+  "commodity": "resource:org.acme.mynetwork.Commodity#commodityA",
+  "newOwner": "resource:org.acme.mynetwork.Trader#traderB"
+}
+```
 
-![Bike Insurance](images/Picture5.png)
+You can verify the new owner by clicking on the `Commodity` registry. Also you can view all the transactions by selecting the `All Transactions` registry.
 
-Login credentials. Block written to the chain.
+Example of transaction view:
+<p align="center">
+  <img width="400" height="200" src="images/transactionsview.png">
+</p>
 
-![Login Credentials](images/Picture6.png)
+## 5. Deploy the Business Network Archive on Hyperledger Composer running locally (alternative deployment approach)
 
-Once an incident has happened the Biker can file a claim on his own by selecting the “claim Self-Service” tab.
+Deploying a business network to the Hyperledger Fabric requires the Hyperledger Composer chaincode to be installed on the peer, then the business network archive (`.bna`) must be sent to the peer, and a new participant, identity, and associated card must be created to be the network administrator. Finally, the network administrator business network card must be imported for use, and the network can then be pinged to check it is responding.
 
-![Claim Service](images/Picture61.png)
+Change directory to the `dist` folder containing `my-network.bna` file.
 
-The Biker will be asked to login by using the credentials that had been given to him before.
+The `composer network install` command requires a PeerAdmin business network card (in this case one has been created and imported in advance), and the name of the business network. To install the composer runtime, run the following command:
+```
+cd dist
+composer network install --card PeerAdmin@hlfv1 --archiveFile my-network.bna
+```
 
-![Login](images/Picture7.png)
+The `composer network start` command requires a business network card, as well as the name of the admin identity for the business network, the file path of the `.bna` and the name of the file to be created ready to import as a business network card. To deploy the business network, run the following command:
+```
+composer network start --networkName my-network --networkVersion 0.0.1 --networkAdmin admin --networkAdminEnrollSecret adminpw --card PeerAdmin@hlfv1 --file networkadmin.card
+```
 
-He can file a new claim by selecting the tab shown above.
+The `composer card import` command requires the filename specified in `composer network start` to create a card. To import the network administrator identity as a usable business network card, run the following command:
+```
+composer card import --file networkadmin.card
+```
 
-![File Claim](images/Picture8.png)
+You can verify that the network has been deployed by typing:
+```
+composer network ping --card admin@my-network
+```
 
-The Biker can briefly describe the damage on his bike and/or select whether it has been stolen. In case the Bike has been stolen the claim will be processed through the police who has to confirm or deny the theft (option 1). In case there was just a damage the claim will be processed through the repair shop (option 2). In the following section, we will start with option 1.
+You should see the the output as follows:
+```
+The connection to the network was successfully tested: my-network
+	version: 0.19.0
+	participant: org.hyperledger.composer.system.Identity#82c679fbcb1541eafeff1bc71edad4f2c980a0e17a5333a6a611124c2addf4ba
 
-![Claim Description](images/Picture9.png)
+Command succeeded
+```
 
-**Option 1**
-
-Once the Biker has submitted the claim it will be shown in the box marked in red. Furthermore, another block is being written to the chain.
-![Claim Block](images/Picture10.png)
-
-The Biker can also view the active claims. **Note:** You may need to re-log into Claims Processing to see the new active claim.
-
-![Active Claims](images/Picture11.png)
-
-By selecting “claim processing” the Insurance company can view all active claims that have not been processed yet. A clerk can decide on the claims in this view. Since we are still looking at option 1 the theft has to be confirmed or denied by the police. Therefore, the insurance company can only reject the claim at this point in stage.
-
-![Claim Processing](images/Picture12.png)
-
-The Police Peer can view the claims that include theft. In case the bike has been reported stolen they can confirm the claim and include a file reference number. In case no theft has been reported they can reject the claim and it will not be processed.
-
-![Police Peer](images/Picture13.png)
-
-Let’s assume the Biker did not rip-off the insurance company and has reported the bike as stolen. The police will confirm the claim which results in another Block being written to the chain.
-
-![Police Transaction](images/Picture14.png)
-
-Going back to the “claim processing” tab you can see that the insurance company has the option to reimburse the claim now because the police had confirmed that the bike has been stolen. Block is being written to the chain
-
-![Claim Processing](images/Picture15.png)
-
-The Biker can see the new status of his claim which changed to reimbursed.
-
-![User login](images/Picture16.png)
-
-**Option 2**
-
-Option 2 covers the case of an accident.
-
-![Accident](images/Picture17.png)
-
-The insurance “claim processing” tab shows the unprocessed claims. A clerk can choose between three options on how to process the claim. “Reject” will stop the claim process whereas “reimburse” leads directly to the payment to the customer. In case something needs to be repaired the insurance company has the option to select “repair”. This will forward the claim to a repair shop and will generate a repair order. A block is being written to the chain.
-
-![Claim Processing](images/Picture18.png)
-
-The Repair Shop will get a message showing the repair order. Once they’ve done the repair works the repair shop can mark the order as completed. Afterwards, the insurance company will get a message to proceed the payment to the repair shop. a block is being written to the chain
-
-![Reapir Shop](images/Picture19.png)
-
-The Biker can see in his “claim self-service” tab that the claim has been resolved and the bike was repaired by the shop.
-
-![Claim Status](images/Picture20.png)
-
-The insurance company has the option to activate or deactivate certain contracts. This does not mean that contracts that have already been signed by customers will be no longer valid. It just does not allow new signings for these types of contracts. In addition, the insurance company has the possibility to create new contract templates that have different terms and conditions and a different pricing.  Any transaction will result in a block being written to the chain.
-
-![Contract Management](images/Picture21.png)
-
-## Additional resources
-Following is a list of additional blockchain resources:
-* [Fundamentals of IBM Blockchain](https://www.ibm.com/blockchain/what-is-blockchain.html)
-* [Hyperledger Fabric Documentation](https://hyperledger-fabric.readthedocs.io/)
-* [Hyperledger Fabric code on GitHub](https://github.com/hyperledger/fabric)
-
-## Troubleshooting
-
-* Run `clean.sh` to remove the docker images and containers for the insurance network.
+To integrate with the deployed business network (creating assets/participants and submitting transactions) we can either use the Composer Node SDK or we can generate a REST API. To create the REST API we need to launch the `composer-rest-server` and tell it how to connect to our deployed business network. Now launch the server by changing directory to the project working directory and type:
 ```bash
-./clean.sh
+cd ..
+composer-rest-server
 ```
+
+Answer the questions posed at startup. These allow the composer-rest-server to connect to Hyperledger Fabric and configure how the REST API is generated.
+* Enter `admin@my-network` as the card name.
+* Select `never use namespaces` when asked whether to use namespaces in the generated API.
+* Select `No` when asked whether to secure the generated API.
+* Select `No` when asked whether to enable authentication with Passport.
+* Select `Yes` when asked whether to enable event publication.
+* Select `No` when asked whether to enable TLS security.
+
+If the composer-rest-server started successfully you should see these two lines are output:
+```
+Discovering types from business network definition ...
+Discovered types from business network definition
+Generating schemas for all types in business network definition ...
+Generated schemas for all types in business network definition
+Adding schemas for all types to Loopback ...
+Added schemas for all types to Loopback
+Web server listening at: http://localhost:3000
+Browse your REST API at http://localhost:3000/explorer
+```
+
+Open a web browser and navigate to http://localhost:3000/explorer
+
+You should see the LoopBack API Explorer, allowing you to inspect and test the generated REST API. Follow the instructions to test Business Network Definition as mentioned above in the composer section.
+
+## Ready to move to Step 2!
+Congratulations - you have completed Step 1 of this Composite Journey - move onto [Step 2](https://github.com/IBM/BlockchainBalanceTransfer-CompositeJourney).
+
+## Additional Resources
+* [Hyperledger Fabric Docs](http://hyperledger-fabric.readthedocs.io/en/latest/)
+
 ## License
 [Apache 2.0](LICENSE)
