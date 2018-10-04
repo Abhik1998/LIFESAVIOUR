@@ -1,230 +1,302 @@
-*阅读本文的其他语言版本：[English](README.md),[Japanese](README-ja.md).*
+﻿*阅读本文的其他语言版本：[English](README.md), [한국어](README-ko.md)。*
+ # BlockchainNetwork-CompositeJourney
 
+## 构建您的第一个网络 (BYFN)
 
-# 构建区块链保险应用程序
+欢迎来到构建区块链应用程序系列的第一部分。**第 1 部分**将介绍如何创建一个用于商品贸易的 Hyperledger Composer Business Network Archive (BNA) 文件，并将它部署在 Hyperledger Fabric 上。这是 Hyperledger Composer 样本中的最基础样本，所以初级开发人员就能管理他。这个 Code Pattern 已经更新，可以支持  Hyperledger Composer V0.19.0, Hyperledger Fabric V1.1。
 
-本项目展示在保险领域使用区块链来进行索赔处理。在本应用程序中，我们有 4 个参与者，分别是 Insurance、Police、Repair Shop 和 Shop 对等节点。Insurance 对等节点是为产品提供保险并负责处理索赔的保险公司。Police 对等节点负责核查被盗索赔。Repair Shop 对等节点负责修理产品，而 Shop 对等节点负责向用户销售产品。
+Hyperledger Fabric 是一种区块链架构实现，也是 The Linux Foundation 主办的一个 Hyperledger 项目。Hyperledger Fabric 旨在作为开发具有模块化架构的应用程序或解决方案的基础，它允许即插即用地使用共识服务和成员服务等组件。
 
-目标受众级别：中级开发人员
+[第 2 部分](https://github.com/IBM/BlockchainBalanceTransfer-CompositeJourney)，我们将进一步探索创建包含多个参与者的复杂网络，并使用访问控制规则 (ACL) 为参与者提供网络访问权限。在本 developer journey 中，将在本地运行 Hyperledger Fabric。
+
+可以使用 [Hyperledger Composer](https://github.com/hyperledger/composer) 为当前的业务网络快速建模，包括现有资产和与之相关的交易。资产包括有形或无形的商品、服务或财产。作为业务网络模型的一部分，您还要定义能与资产交互的交易。业务网络还包含跨多个业务网络与它们交互的参与者，每个参与者都可以与唯一身份关联。业务网络定义由模型 (.cto)、脚本 (.js) 和 ACL (.acl) 文件组成，它们都打包为归档文件（.bna 文件）并导出。然后，将该归档文件部署到 Hyperledger Fabric 网络中。
 
 ## 包含的组件
 * Hyperledger Fabric
+* Hyperledger Composer
 * Docker
 
 ## 应用程序工作流图
-![工作流](images/arch-blockchain-insurance2.png)
+![Application Workflow](images/arch-blockchain-network1.png)
 
-* 为对等节点生成证书
-* 为网络构建 Docker 镜像
-* 启动保险网络
+1.安装网络依赖项 a) cryptogen b) configtxgen c) configtxlator d) peer
+
+2.配置网络 a) 生成网络工件 b) 启动网络
 
 ## 前提条件
 
 * [Docker](https://www.docker.com/products/overview) - v1.13 或更高版本
 * [Docker Compose](https://docs.docker.com/compose/overview/) - v1.8 或更高版本
-* [Node.js 和 npm](https://nodejs.org/en/download/) - node v6.2.0 - v6.10.0（不支持 v7+）；您的 node 安装中包含 npm。
+* [Node.js & npm](https://nodejs.org/en/download/) - node v6.2.0 - v6.10.0（不支持 v7 及更高版本）；npm 是 Node 安装的一部分。
 * [Git 客户端](https://git-scm.com/downloads) - 执行克隆命令时需要它
+*  git - 2.9.x
+*  Python - 2.7.x
 
 ## 步骤
+1.[安装 Hyperledger Composer 开发工具](#1-installing-hyperledger-composer-development-tools)
 
-1. [运行应用程序](#1-run-the-application)
+2.[启动 Hyperledger Fabric](#2-starting-hyperledger-fabric)
 
-## 1. 运行应用程序
+3.[生成 Business Network Archive (BNA)](#3-generate-the-business-network-archive-bna)
 
-克隆该存储库：
+4.[使用 Composer Playground 部署 Business Network Archive](#4-deploy-the-business-network-archive-using-composer-playground)
+
+5.[将 Business Network Archive 部署到在本地运行的 Hyperledger Composer 上](#5-deploy-the-business-network-archive-on-hyperledger-composer-running-locally)
+
+## 1.安装 Hyperledger Composer 开发工具
+
+**备注：**您可能需要在超级用户 `sudo` 模式下运行这些命令。根据安全策略的规定，`sudo` 允许授权用户以超级用户或另一个用户的身份执行命令。另外，你需要安装最新的 composer-cli (0.19.1)。如果你已经安装了就版本，请先使用以下命令删除它：
+
+```
+npm uninstall -g composer-cli
+```
+
+* `composer-cli` 包含用于开发业务网络的所有命令行操作。要安装 `composer-cli`，请运行以下命令：
+```
+npm install -g composer-cli@0.19.1
+```
+
+* `generator-hyperledger-composer` 是一个 Yeoman 插件，用于为您的业务网络创建定制的（也就是自定义的）应用程序。Yeoman 是一个开源客户端开发堆栈，包含帮助开发人员构建 Web 应用程序的工具和框架。要安装 `generator-hyperledger-composer`，请运行以下命令：
+```
+npm install -g generator-hyperledger-composer@0.19.1
+```
+
+* `composer-rest-server` 使用 Hyperledger Composer LoopBack Connector 连接到业务网络，提取模型，然后呈现一个页面，其中包含已经为该模型生成的 REST API。要安装 `composer-rest-server`，请运行以下命令：
+```
+npm install -g composer-rest-server@0.19.1
+```
+
+* 将 `Yeoman` 与 `generator-hyperledger-composer` 组件结合使用时，它可以解释业务网络并基于这些网络生成应用程序。要安装 `Yeoman`，请运行以下命令：
+```
+npm install -g yo@2.0.0
+```
+
+## 2.启动 Hyperledger Fabric
+
+首先下载 Fabric 的 Docker 文件，为创建 Composer 配置文件做好准备。Hyperledger Composer 使用连接配置文件连接到运行时。连接配置文件是一个 JSON 文档，位于用户的主目录中（或者可能来自一个环境变量），在使用 Composer API 或命令行工具时，可以按名称引用它。使用连接配置文件确保代码和脚本能在运行时实例之间轻松移植。
+
+PeerAdmin 卡片是一个用于识别本地 Hyperledger Fabric 管理人员。在安装开发过程中（例如在你的计算机上），当你创建本地 Hyperledger Fabric 时会同时创建 PeerAdmin ID 卡。
+
+Hyperledger Fabric v1.0 网络的 PeerAdmin 卡的形式是 PeerAdmin@hlfv1，一般来说，PeerAdmin 一般是一个特殊角色，可以用于以下功能：
+
+* 开发业务网络
+* 为业务网络 admins* 创建、分配、撤销 ID 卡。
+
+使用以下命令启动 Fabric 并创建一个 Composer 配置文件：
 ```bash
-git clone https://github.com/IBM/build-blockchain-insurance-app.git
+./downloadFabric.sh
+./startFabric.sh
+./createComposerProfile.sh
+```  
+
+现在不需要这么做；但是作为参考，您可以使用以下命令停止并关闭 Fabric：
+```
+./stopFabric.sh
+./teardownFabric.sh
 ```
 
-使用您的 [docker hub](https://hub.docker.com/) 凭证进行登录。
+## 3.生成 Business Network Archive (BNA)
+
+这个业务网络定义了以下内容：
+
+**参与者**
+`贸易方`
+
+**资产**
+`商品`
+
+**交易**
+`贸易`
+
+`商品`归一位`贸易方`所有，可通过提交`贸易`交易来修改`商品`的所有者。
+
+下一步是为业务网络定义生成一个 Business Network Archive (BNA) 文件。BNA 文件是可部署的单元 - 一个可部署到 Composer 运行时上执行的文件。
+
+使用以下命令生成网络归档文件：
 ```bash
-Docker login
+npm install
 ```
-
-运行构建脚本来下载并创建订购者、Insurance 对等节点、Police 对等节点、Shop 对等节点、Repair Shop 对等节点、Web 应用程序和每个对等节点的证书颁发机构的 Docker 镜像。
-
-对于 Mac 用户：
+您应该看到以下输出：
 ```bash
-cd build-blockchain-insurance-app
-./build_mac.sh
+Creating Business Network Archive
+
+Looking for package.json of Business Network Definition
+	Input directory: /Users/ishan/Documents/git-demo/BlockchainNetwork-CompositeJourney
+
+Found:
+	Description: Sample Trade Network
+	Name: my-network
+	Identifier: my-network@0.0.1
+
+Written Business Network Definition Archive file to
+	Output file: ./dist/my-network.bna
+
+Command succeeded
 ```
 
-对于 Ubuntu 用户：
+`composer archive create` 命令在 `dist` 文件夹中创建了一个名为 `my-network.bna` 的文件。
+
+可以针对一个嵌入式运行时来测试业务网络定义，该运行时在一个 Node.js 进程中将“区块链”的状态存储在内存中。这个嵌入式运行时对单元测试非常有用，因为它使您能集中精力测试业务逻辑，而不是配置整个 Fabric。
+从项目工作目录 (`BlockchainNetwork-CompositeJourney`)，运行以下命令：
+```
+npm test
+```
+
+您会看到以下输出：
 ```bash
-cd build-blockchain-insurance-app
-./build_ubuntu.sh
+
+> my-network@0.0.1 test /Users/laurabennett/2017-NewRole/Code/BlockchainNetwork-CompositeJourney
+> mocha --recursive
+
+Commodity Trading
+    #tradeCommodity
+      ✓ should be able to trade a commodity (198ms)
+
+
+  1 passing (1s)
 ```
 
-您会在控制台上看到以下输出：
+## 4.使用 Composer Playground 部署 Business Network Archive
+
+打开 [Composer Playground](http://composer-playground.mybluemix.net/)，其中已在默认情况下导入基本样本网络。
+如果以前使用过 Playground，一定要在浏览器控制台中运行 `localStorage.clear()` 来清除浏览器本地存储。
+
+现在导入 `my-network.bna` 文件并单击 deploy 按钮。如果你不知道如何导入，查看一下 [tour of Composer Playground](https://www.youtube.com/watch?time_continue=29&v=JQMh_DQ6wXc)
+
+>也可以[在本地设置 Composer Playground](https://hyperledger.github.io/composer/installing/using-playground-locally.html)。
+
+您会看到以下信息：
+<p align="center">
+  <img width="400" height="200" src="images/ComposerPlayground.jpg">
+</p>
+
+要测试您的业务网络定义，请先单击 **Test** 选项卡：
+
+单击 `Create New Participant` 按钮
+<p align="center">
+  <img width="200" height="100" src="images/createparticipantbtn.png">
+</p>
+
+
+创建 `Trader` 参与者：
+
 ```
-Creating repairshop-ca ...
-Creating insurance-ca ...
-Creating shop-ca ...
-Creating police-ca ...
-Creating orderer0 ...
-Creating repairshop-ca
-Creating insurance-ca
-Creating police-ca
-Creating shop-ca
-Creating orderer0 ... done
-Creating insurance-peer ...
-Creating insurance-peer ... done
-Creating shop-peer ...
-Creating shop-peer ... done
-Creating repairshop-peer ...
-Creating repairshop-peer ... done
-Creating web ...
-Creating police-peer ...
-Creating web
-Creating police-peer ... done
+{
+  "$class": "org.acme.mynetwork.Trader",
+  "tradeId": "traderA",
+  "firstName": "Tobias",
+  "lastName": "Funke"
+}
+
+{
+  "$class": "org.acme.mynetwork.Trader",
+  "tradeId": "traderB",
+  "firstName": "Simon",
+  "lastName": "Stone"
+}
 ```
 
-**等待几分钟，让应用程序在网络上安装并实例化该链代码**
+突出显示最左侧的 Commodity 选项卡，
+创建一个所有者为 `traderA` 的 `Commodity` 资产：
+```
+{
+  "$class": "org.acme.mynetwork.Commodity",
+  "tradingSymbol": "commodityA",
+  "description": "Sample Commodity",
+  "mainExchange": "Dollar",
+  "quantity": 100,
+  "owner": "resource:org.acme.mynetwork.Trader#traderA"
+}
+```
 
-使用以下命令检查安装状态：
+单击左下侧的 `Submit Transaction` 按钮，提交一个 `Trade` 交易来更改商品 `commodityA` 的所有者：
+```
+{
+  "$class": "org.acme.mynetwork.Trade",
+  "commodity": "resource:org.acme.mynetwork.Commodity#commodityA",
+  "newOwner": "resource:org.acme.mynetwork.Trader#traderB"
+}
+```
+
+可以单击 `Commodity` 注册表来验证新的所有者。也可以选择 `All Transactions` 注册表来查看所有交易。
+
+交易视图示例：
+<p align="center">
+  <img width="400" height="200" src="images/transactionsview.png">
+</p>
+
+## 5. 将 Business Network Archive 部署到在本地运行的 Hyperledger Composer 上（可选部署方法）
+
+将业务网络部署到 Hyperledger Fabric 需要将 Hyperledger Composer 链代码安装在对等节点上，然后必须将业务网络归档文件 (.bna) 发送给该对等节点，而且必须创建一个新参与者、身份和关联卡作为网络管理员。最后，必须导入网络管理员业务网络卡供使用，然后对该网络执行 ping 操作来检查它是否会响应。
+
+将目录更改到包含 `my-network.bna` 文件的 `dist` 文件夹。
+
+`composer runtime install` 命令需要一个 PeerAdmin 业务网络卡（在这里已提前创建并导入了一个卡），以及业务网络的名称。要安装 Composer 运行时，请运行以下命令：
+```
+cd dist
+composer runtime install --card PeerAdmin@hlfv1 --businessNetworkName my-network
+```
+
+`composer network start` 命令需要一个业务网络卡，以及业务网络的管理员身份的名称、`.bna` 的文件路径和要创建的适合导入作为业务网络卡的文件名称。要部署业务网络，请运行以下命令：
+```
+composer network start --card PeerAdmin@hlfv1 --networkAdmin admin --networkAdminEnrollSecret adminpw --archiveFile my-network.bna --file networkadmin.card
+```
+
+`composer card import` 命令需要使用 `composer network start` 中指定的文件名来创建一个卡。要导入网络管理员身份作为适用的业务网络卡，请运行以下命令：
+```
+composer card import --file networkadmin.card
+```
+
+可以键入以下命令来验证网络已部署：
+```
+composer network ping --card admin@my-network
+```
+
+您会看到以下输出：
+```
+The connection to the network was successfully tested: my-network
+	version: 0.16.0
+	participant: org.hyperledger.composer.system.NetworkAdmin#admin
+
+Command succeeded
+```
+
+要与已部署的业务网络集成（创建资产/参与者并提交交易），可以使用 Composer Node SDK 或生成一个 REST API。要创建 REST API，需要启动 `composer-rest-server`，告诉它如何连接到我们已部署的业务网络。现在启动该服务器，方法是将目录更改到项目工作目录，并键入以下内容：
 ```bash
-docker logs web
-```
-完成上述操作时，您会在控制台上看到以下输出：
-```
-npm info it worked if it ends with ok
-npm info using npm@3.10.10
-npm info using node@v6.11.3
-npm info lifecycle blockchain-for-insurance@2.1.0~preserve: blockchain-for-insurance@2.1.0
-npm info lifecycle blockchain-for-insurance@2.1.0~serve: blockchain-for-insurance@2.1.0
-
-> blockchain-for-insurance@2.1.0 serve /app
-> cross-env NODE_ENV=production node ./bin/server
-
-/app/app/static/js
-Server running on port: 3000
-info: [EventHub.js]: _connect - options {"grpc.ssl_target_name_override":"insurance-peer","grpc.default_authority":"insurance-peer"}
-info: [EventHub.js]: _connect - options {"grpc.ssl_target_name_override":"shop-peer","grpc.default_authority":"shop-peer"}
-info: [EventHub.js]: _connect - options {"grpc.ssl_target_name_override":"repairshop-peer","grpc.default_authority":"repairshop-peer"}
-info: [EventHub.js]: _connect - options {"grpc.ssl_target_name_override":"police-peer","grpc.default_authority":"police-peer"}
-Default channel not found, attempting creation...
-Successfully created a new default channel.
-Joining peers to the default channel.
-Chaincode is not installed, attempting installation...
-Base container image present.
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-info: [packager/Golang.js]: packaging GOLANG from bcins
-Successfully installed chaincode on the default channel.
-Successfully instantiated chaincode on all peers.
+cd ..
+composer-rest-server
 ```
 
-使用链接 http://localhost:3000 将该 Web 应用程序加载到浏览器中。
+回答启动时提出的问题。这些信息使得 composer-rest-server 能连接到 Hyperledger Fabric，并配置如何生成 REST API。
+* 输入 `admin@my-network` 作为卡名称。
+* 在询问是否在生成的 API 中使用名称空间时，选择 `never use namespaces`。
+* 在询问是否保护生成的 API 时，选择 `No`。
+* 在询问是否启用事件发布时，选择 `Yes`。
+* 在询问是否启用 TLS 安全性时，选择 `No`。
 
-主页显示了网络中的参与者（对等节点）。您可以看到这里实现了 Insurance、Repair Shop、Police 和 Shop 对等节点。它们是网络的参与者。
-
-![区块链保险](images/home.png)
-
-假设您是一位希望购买手机、自行车或滑雪板的用户（下文称为“骑行者”）。通过单击“Go to the shop”部分，您被重定向到提供了以下产品的商店（shop 对等节点）。
-
-![客户购物](images/Picture1.png)
-
-可以看到该商店现在提供了 3 款产品。此外，您拥有可用于这些产品的保险合约。在我们的场景中，您是一位想买一辆新自行车的户外运动爱好者。因此，您将单击 Bike Shop 部分。
-
-![购物](images/Picture2.png)
-
-在这一部分，可以在商店中看到不同的自行车。可以在 4 种不同的自行车中进行选择。单击 Next，您将跳转到下一页，这一页将要求提供客户的个人数据。
-
-![自行车商店](images/Picture3.png)
-
-您可以在不同保险合约之间进行选择，这些合约有不同的保险范围以及条款和条件。您需要输入您的个人数据，并选择合约的开始日期和结束日期。因为短期或事件驱动的合约是保险行业的发展趋势，所以您有机会按天来选择合约有效期。保险合约的每天价格可以通过链代码中定义的一个公式来计算。单击 Next，您将跳转到一个屏幕，其中汇总了您的购买信息并显示了您的总金额。
-
-![自行车保险](images/Picture4.png)
-
-该应用程序将显示购买的总金额。单击“order”即表明您同意这些条款和条件并完成交易（签署合约）。此外，您将收到一个唯一的用户名和密码。登录凭证将在您提出索赔后使用。  一个区块被写入到区块链中。
-
->备注：可以单击右下角的黑色箭头来查看该区块。
-
-![自行车保险](images/Picture5.png)
-
-登录凭证。将区块写入到区块链中。
-
-![登录凭证](images/Picture6.png)
-
-发生事故后，骑行者可以选择“claim Self-Service”选项卡来自行提出索赔。
-
-![索赔服务](images/Picture61.png)
-
-骑行者将被要求使用之前提供给他的凭证进行登录。
-
-![登录](images/Picture7.png)
-
-他可以选择上面所示的选项卡来提出一个新索赔。
-
-![提出索赔](images/Picture8.png)
-
-骑行者可以简要描述他的自行车所受的损伤和/或选择它是否被盗。如果自行车被盗，索赔将交由警察处理，警察必须确认或否认盗窃（选项 1）。如果只有一处损伤，索赔将由修理厂处理（选项 2）。在下一节，我们将开始分析选项 1。
-
-![索赔描述](images/Picture9.png)
-
-**选项 1**
-
-骑行者提交索赔后，它将显示在一个标红的方框中。此外，另一个区块会写到区块链中。
-![索赔区块](images/Picture10.png)
-
-骑行者也可以查看有效的索赔。
-
-![有效索赔](images/Picture11.png)
-
-通过选择“claim processing”，保险公司可以查看尚未处理的所有有效索赔。职员可在此视图中对这些索赔做出决定。因为我们仍在分析选项 1，所以盗窃需要由警察确认或否认。因此，保险公司在此阶段只能拒绝索赔。
-
-![索赔处理](images/Picture12.png)
-
-Police 对等节点可以查看包含盗窃的索赔。如果报告自行车被盗了，他们可以确认该索赔并包含一个文件引用编号。如果没有报告盗窃，他们可以拒绝该索赔，索赔不会被处理。
-
-![Police 对等节点](images/Picture13.png)
-
-我们假设骑行者没有勒索保险公司，而且已经报告了自行车被盗。警察将确认该索赔，这会导致另一个区块被写入区块链中。
-
-![警察事务](images/Picture14.png)
-
-返回到“claim processing”选项卡，可以看到保险公司现在可以选择赔偿，因为警察已确认自行车被盗。一个区块被写入到区块链中。
-
-![索赔处理](images/Picture15.png)
-
-骑行者可以看到他的索赔的新状态被更改为已赔偿。
-
-![用户登录](images/Picture16.png)
-
-**选项 2**
-
-选项 2 涵盖事故的处理情况。
-
-![事故](images/Picture17.png)
-
-保险公司的“claim processing”选项卡显示了未处理的索赔。职员可以在处理索赔的三个选项之间进行选择。“Reject”将停止索赔流程，而“reimburse”会直接导致向客户支付。如果某个部分需要修理，保险公司可以选择“repair”。这会把索赔转发给修理厂，并将生成一个修理订单。一个区块被写入到区块链中。
-
-![索赔处理](images/Picture18.png)
-
-修理厂会获得一条显示修理订单的消息。在完成修理工作后，修理厂可以将订单标记为已完成。随后，保险公司将会获得一条消息，以便继续向修理厂支付费用。一个区块被写入到区块链中
-
-![修理厂](images/Picture19.png)
-
-骑行者可以在这个“claim self-service”选项卡中看到，索赔已被解决，自行车已被修理厂修好。
-
-![索赔状态](images/Picture20.png)
-
-保险公司可以选择激活或停用某些合约。这并不意味着客户已签署的合约不再有效。只是意味着不允许再签署这些类型的合约。此外，保险公司可以创建包含不同条款、条件和定价的新合约模板。  任何事务都会导致一个区块被写入区块链中。
-
-![合约管理](images/Picture21.png)
-
-## 附加资源
-以下是一个附加区块链资源列表：
-* [IBM 区块链基础](https://www.ibm.com/blockchain/what-is-blockchain.html)
-* [Hyperledger Fabric 文档](https://hyperledger-fabric.readthedocs.io/)
-* [GitHub 上的 Hyperledger Fabric 代码](https://github.com/hyperledger/fabric)
-
-## 故障排除
-
-* 运行 `clean.sh` 来删除保险网络的 Docker 镜像和容器。
-```bash
-./clean.sh
+如果 composer-rest-server 成功启动，您会看到以下两行输出：
 ```
+Discovering types from business network definition ...
+Discovered types from business network definition
+Generating schemas for all types in business network definition ...
+Generated schemas for all types in business network definition
+Adding schemas for all types to Loopback ...
+Added schemas for all types to Loopback
+Web server listening at: http://localhost:3000
+Browse your REST API at http://localhost:3000/explorer
+```
+
+打开 Web 浏览器并导航到 http://localhost:3000/explorer
+
+您会看到 LoopBack API Explorer，可以检查和测试已生成的 REST API。按照上面的 Composer 部分给出的说明来测试业务网络定义。
+
+## 准备执行第 2 步！
+恭喜您 - 您已经完成这个系列学习之旅的第 1 步 - 请继续执行[第 2 步](https://github.com/IBM/BlockchainBalanceTransfer-CompositeJourney).
+
+## 其他资源
+* [Hyperledger Fabric 文档](http://hyperledger-fabric.readthedocs.io/en/latest/)
+* [Hyperledger Composer 文档](https://hyperledger.github.io/composer/introduction/introduction.html)
+
 ## 许可
 [Apache 2.0](LICENSE)
+
